@@ -93,16 +93,21 @@ as it arrives.
 Clicking a session opens a detail page showing the session's totals, its turns, a
 timeline, the tree of subagents and how much each one used, and a per-model split. A turn
 is one prompt and every model completion it led to, so the **Turns** table shows what each
-prompt cost, which model answered it, and the reasoning effort it was sent with.
+prompt cost, which model answered it, the reasoning effort it was sent with, and how long
+it ran, measured from the prompt to the turn's last completion, a subagent's included.
 Expanding a turn lists its completions in order, the subagents' among them, with the time
-since the prompt was sent. A turn's
-cost includes the subagents it started, each counted in the turn that was running when
+since the prompt was sent. A turn's cost includes the subagents it started, each counted in the turn that was running when
 the subagent made its first completion. The prompt is shown cut to its first 280
 characters and is read from the Muse log when the page asks for it, so it disappears from
 the page once Muse's log has been deleted. Usage imported before turns were tracked is
 assigned to its turns the first time the new version scans, which rereads every log once
-(about 15 seconds for 3 GB of logs). Clicking a project opens a page listing that project's sessions and
-models. These detail pages have their own URLs, so you can bookmark them.
+(about 15 seconds for 3 GB of logs).
+
+Clicking a project opens a page listing that project's sessions and models. The top of
+the page shows each alert that covers the project, its own alerts before those for every
+project, with the amount spent in the alert's period, a bar marking its warning levels,
+and whether it is on track, past a warning, or exceeded. Because the page updates live,
+it can be left open to watch spending approach a limit. These detail pages have their own URLs, so you can bookmark them.
 
 The **Filters** drawer narrows the data by date range, project, model, session, and
 billing mode. Active filters appear as chips beside the page title, which makes it clear

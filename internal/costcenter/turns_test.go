@@ -62,6 +62,10 @@ func TestTurnsGroupPromptsCompletionsAndSubagents(t *testing.T) {
 		!strings.HasPrefix(*a.Prompt, "Write the report. word") || len([]rune(*a.Prompt)) > promptLimit || a.Effort != nil {
 		t.Fatalf("turn a %+v", a)
 	}
+	// A turn ends at its last completion, a subagent's included.
+	if !localTime(a.Ended).Equal(at(3).Truncate(time.Microsecond)) || !localTime(b.Ended).Equal(at(12).Truncate(time.Microsecond)) {
+		t.Fatalf("turns end at %s and %s", a.Ended, b.Ended)
+	}
 	// The subagent started during turn B, so its usage counts there.
 	if b.ID != "turn-b" || b.Completions != 1 || b.Subagents != 1 || b.Input != 47 || *b.Prompt != "1+1" ||
 		*b.Effort != "medium" || *b.EffortSource != "settings" {

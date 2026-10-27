@@ -10,6 +10,15 @@ const completionCost = row => row.api_equivalent_usd == null ? 'Unknown' : '$' +
 
 const images = n => `${number(n)} image${n === 1 ? '' : 's'}`;
 
+/** How long a turn ran, from its prompt to its last completion, to the second. */
+function turnDuration(start, end) {
+  const seconds = Math.max(0, Math.round((new Date(end) - new Date(start)) / 1000));
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ${String(seconds % 60).padStart(2, '0')}s`;
+  return `${Math.floor(minutes / 60)}h ${String(minutes % 60).padStart(2, '0')}m`;
+}
+
 /** Time since the turn started, as +m:ss. */
 function elapsed(start, at) {
   const seconds = Math.max(0, Math.round((new Date(at) - new Date(start)) / 1000));
@@ -28,6 +37,7 @@ function TurnRow({ turn, index, events, session }) {
     <tr className={'turn-row' + (open ? ' open' : '')}>
       <td><button type="button" className="turn-toggle" aria-expanded={open} aria-label={`${open ? 'Hide' : 'Show'} completions of turn ${index + 1}`} onClick={() => setOpen(!open)}>{open ? '▾' : '▸'} {index + 1}</button></td>
       <td className="nowrap">{dateTime(turn.started)}</td>
+      <td className="numeric" title={turn.ended ? `Prompt sent ${new Date(turn.started).toLocaleTimeString()}; last completion ${new Date(turn.ended).toLocaleTimeString()}` : undefined}>{turn.ended ? turnDuration(turn.started, turn.ended) : '—'}</td>
       <td className={'turn-prompt' + (turn.prompt == null ? ' unavailable' : '')} title={prompt + (turn.prompts > 1 ? `\n\n${turn.prompts} prompts went into this turn; the first is shown.` : '')}><span className="text">{prompt}</span>{turn.prompts > 1 && <span className="tree-tag">+{turn.prompts - 1}</span>}</td>
       <td>{turn.models.join(', ') || '—'}{turn.images > 0 && <span className="turn-subagents">{images(turn.images)}</span>}</td>
       <td title={turn.effort ? EFFORT_SOURCES[turn.effort_source] : 'Not recorded. Turns record their effort once the prompt hook is installed with meta-cost hook install.'}>{turn.effort || '—'}</td>
@@ -35,7 +45,7 @@ function TurnRow({ turn, index, events, session }) {
       <td className="numeric">{compact(turn.input)} / {compact(turn.output)}</td>
       <td className="numeric">{cost(turn)}</td>
     </tr>
-    {open && <tr className="turn-detail"><td colSpan={8}>
+    {open && <tr className="turn-detail"><td colSpan={9}>
       <table><thead><tr><th>Time</th><th>Agent</th><th>Model</th><th>Input (cached)</th><th>Output</th><th>Cost</th></tr></thead><tbody>
         {!completions.length && <tr className="turn-note"><td colSpan={6}>No completions in this period.</td></tr>}
         {completions.map(row => <tr key={row.id} className={row.session === session ? '' : 'subagent'}>
@@ -96,8 +106,8 @@ export default function SessionDetail({ filters, setFilters }) {
     <TotalsMetrics totals={t} extra={<Metric label="This session alone" icon="◷" id="own-share" accent value={percent(tokens(data.own), family).toFixed(1) + '%'}
       description={`${number(tokens(data.own))} tokens · ${cost(data.own)} · subagents make up the rest`} />} />
     <section className="panel" id="turns"><div className="panel-heading"><div><h2>Turns</h2><p>Each prompt and what it cost, including the subagents it started. Prompts are read from the Muse log and never stored.</p></div></div>
-      <div className="table-wrap"><table><thead><tr><th>#</th><th>Started</th><th>Prompt</th><th>Model</th><th>Effort</th><th>Completions</th><th>Input / output</th><th>Cost</th></tr></thead><tbody id="turn-rows">
-        {!data.turns.length && <EmptyRow columns={8}>No turns in this period.</EmptyRow>}
+      <div className="table-wrap"><table><thead><tr><th>#</th><th>Started</th><th>Duration</th><th>Prompt</th><th>Model</th><th>Effort</th><th>Completions</th><th>Input / output</th><th>Cost</th></tr></thead><tbody id="turn-rows">
+        {!data.turns.length && <EmptyRow columns={9}>No turns in this period.</EmptyRow>}
         {data.turns.map((turn, i) => <TurnRow key={turn.id || 'untracked'} turn={turn} index={i} events={data.events} session={data.id} />)}
       </tbody></table></div></section>
     <section className="chart-layout"><ChartPanel timeline={data.timeline} unit={data.timeline_unit} />

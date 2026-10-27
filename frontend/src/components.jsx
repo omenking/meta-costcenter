@@ -44,7 +44,8 @@ export function HeadingHelp({ children, text, id, icon = false, label, onClick, 
 
 /**
  * Opens a <dialog> as a modal while mounted: locks page scroll, and restores focus on close.
- * Returns props that close it on Escape or a click on the backdrop.
+ * Returns props that close it on Escape. A click outside the dialog does not close it, so that
+ * a stray click cannot discard what has been entered.
  */
 export function useModalDialog(onClose) {
   const dialog = useRef(null);
@@ -59,11 +60,6 @@ export function useModalDialog(onClose) {
   return {
     ref: dialog,
     onCancel: event => { event.preventDefault(); onClose(); },
-    onClick: event => {
-      if (event.target !== dialog.current) return;
-      const r = dialog.current.getBoundingClientRect();
-      if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) onClose();
-    },
   };
 }
 

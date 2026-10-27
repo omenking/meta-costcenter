@@ -649,8 +649,8 @@ body { padding-top: var(--alert-bar, 0px); }
 #keyguard > .notice { margin: 0 22px 18px; }
 .chart .now-marker line { stroke: #5b6676; stroke-width: 1.5; stroke-dasharray: 4 3; }
 #turns th, #turns td { padding-inline: 12px; text-align: left; }
-#turns th:nth-child(n+6), #turns td.numeric { text-align: right; white-space: nowrap; }
-#turns .turn-prompt { width: 100%; min-width: 280px; white-space: normal; }
+#turns th:nth-child(3), #turns th:nth-child(n+7), #turns td.numeric { text-align: right; white-space: nowrap; }
+#turns .turn-prompt { width: 100%; min-width: 180px; white-space: normal; }
 #turns .turn-prompt span.text { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; line-height: 1.4; }
 #turns .turn-prompt.unavailable, #turns .turn-note td { color: #5b6676; font-style: italic; }
 #turns .turn-subagents { display: block; color: #5b6676; font-size: 14px; }
@@ -662,3 +662,15 @@ body { padding-top: var(--alert-bar, 0px); }
 #turns .turn-detail td:not(:nth-child(-n+3)), #turns .turn-detail th:not(:nth-child(-n+3)) { text-align: right; }
 @media (max-width: 720px) { #turns .turn-prompt { min-width: 200px; } }
 #turns .turn-detail tr.subagent td { color: #5b6676; }
+.project-alert-list { list-style: none; margin: 0; padding: 4px 20px 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.project-alert-list li { border: 1px solid #dce3eb; border-radius: 8px; padding: 14px 16px; display: grid; gap: 8px; }
+.project-alert-list li.level-warning { border-color: #e4b26b; background: #fff8ec; }
+.project-alert-list li.level-exceeded { border-color: #e8a49d; background: #fdf1f0; }
+.project-alert-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.project-alert-name { font-weight: 600; color: #111827; text-decoration: none; }
+.project-alert-name:hover { text-decoration: underline; }
+.project-alert-head .alert-status { font-size: 14px; font-weight: 600; color: #00533d; white-space: nowrap; }
+.project-alert-amount { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; color: #293548; }
+.project-alert-amount strong { font-size: 22px; color: #111827; }
+.project-alert-amount span { margin-left: auto; font-weight: 600; font-variant-numeric: tabular-nums; }
+.project-alert-note { font-size: 14px; color: #5b6676; }

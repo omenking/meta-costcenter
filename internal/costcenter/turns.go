@@ -267,6 +267,7 @@ func preview(text string) *promptText {
 type Turn struct {
 	ID              string   `json:"id"`
 	Started         string   `json:"started"`
+	Ended           string   `json:"ended"` // the last completion, the subagents' included
 	Prompt          *string  `json:"prompt"`
 	PromptTruncated bool     `json:"prompt_truncated"`
 	Prompts         int      `json:"prompts"`
@@ -385,6 +386,11 @@ func (s *Store) Turns(session string, rows []Row, rates []Rate) ([]Turn, error) 
 			t.SubagentSessions = append(t.SubagentSessions, child)
 		}
 		sort.Strings(t.SubagentSessions)
+		for _, r := range members[id] {
+			if t.Ended == "" || localTime(r.RecordedAt).After(localTime(t.Ended)) {
+				t.Ended = r.RecordedAt
+			}
+		}
 		if rows := own[id]; len(rows) > 0 && strings.HasPrefix(rows[0].Source, "record:") {
 			tool := strings.TrimPrefix(rows[0].Source, "record:")
 			t.RecordedBy = &tool

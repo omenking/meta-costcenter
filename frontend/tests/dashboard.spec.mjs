@@ -183,6 +183,8 @@ test('dashboard', async ({ page }) => {
   answer.payload.run_id = 'turn-1';
   fs.appendFileSync(path.join(logs, 'session-3', 'session.jsonl'), jsonl([prompt, answer]));
   await expect(page.locator('#turn-rows')).toContainText('Summarise the README for me', { timeout: 10_000 });
+  await expect(page.locator('#turns thead')).toContainText('Duration');
+  await expect(page.locator('#turn-rows .turn-row').last().locator('td').nth(2)).toHaveText(/^\d+s$/);
   await page.locator('#turn-rows .turn-toggle').last().click();
   await expect(page.locator('#turn-rows .turn-detail tbody tr')).toHaveCount(1);
   await expect(page.locator('#turn-rows .turn-row').last()).toContainText('—');
@@ -250,8 +252,11 @@ test('dashboard', async ({ page }) => {
   await page.locator('.nav', { hasText: 'Alerts' }).click();
   await expect(page.locator('#notification-state')).toContainText('notifications are on');
   await expect(filtersButton()).toHaveCount(0);
-  // The form opens in a modal; Escape closes it without saving.
+  // The form opens in a modal. A click outside it leaves it open, so a stray click cannot
+  // discard the form; Escape closes it without saving.
   await page.locator('#add-alert').click();
+  await expect(page.getByRole('dialog', { name: 'Add alert' })).toBeVisible();
+  await page.mouse.click(5, 5);
   await expect(page.getByRole('dialog', { name: 'Add alert' })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);

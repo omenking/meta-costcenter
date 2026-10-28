@@ -23,7 +23,7 @@ subscription, and they cannot include usage that was never logged on this machin
 
 ## Requirements
 
-- Linux or WSL, on amd64 or arm64
+- Linux, WSL, or macOS, on amd64 or arm64 (Apple Silicon is arm64)
 - A web browser
 
 Go is needed only to build from source, and Node only if you change the frontend code,
@@ -208,7 +208,7 @@ subscription, the session is recorded as subscription. When the key came from
 `meta-keyguard exec` or `meta-keyguard env`, the hook also records the key's label,
 which the session page shows. The hook only checks whether a key is present and never
 reads or stores its value. It needs Linux or WSL, because it reads the Muse process's
-details from `/proc`.
+details from `/proc`. On macOS there is no `/proc`, so sessions stay `unknown`.
 
 Sessions from before the hook was installed stay `unknown`. If you know how they were
 paid, `meta-cost billing backfill --mode subscription --before 2026-10-26` lists them,
@@ -432,8 +432,8 @@ Set `CHROME_PATH` to use a browser other than the installed Google Chrome.
 
 Pushing a tag such as `v0.1.0` runs `.github/workflows/release.yml`, which builds the release
 with GoReleaser from `.goreleaser.yaml` and publishes the
-`meta-cost_linux_amd64.tar.gz` and `meta-cost_linux_arm64.tar.gz`
-archives that `install.sh` downloads. Changes to `web/` or `pricing.json` reach users
+`meta-cost_linux_amd64.tar.gz`, `meta-cost_linux_arm64.tar.gz`,
+`meta-cost_darwin_amd64.tar.gz`, and `meta-cost_darwin_arm64.tar.gz` archives that `install.sh` downloads. Changes to `web/` or `pricing.json` reach users
 only through a new binary, since both are embedded in it.
 
 ### Changing the frontend

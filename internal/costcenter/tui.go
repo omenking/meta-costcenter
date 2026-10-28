@@ -18,7 +18,7 @@ import (
 
 func isTerminal(f *os.File) bool {
 	var t syscall.Termios
-	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, f.Fd(), syscall.TCGETS, uintptr(unsafe.Pointer(&t)))
+	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, f.Fd(), ioctlGetTermios, uintptr(unsafe.Pointer(&t)))
 	return errno == 0
 }
 
@@ -34,17 +34,17 @@ func terminalSize(f *os.File) (int, int) {
 // rawMode puts the terminal in cbreak mode without echo and returns a function that restores it.
 func rawMode(f *os.File) (func(), error) {
 	var old syscall.Termios
-	if _, _, errno := syscall.Syscall(syscall.SYS_IOCTL, f.Fd(), syscall.TCGETS, uintptr(unsafe.Pointer(&old))); errno != 0 {
+	if _, _, errno := syscall.Syscall(syscall.SYS_IOCTL, f.Fd(), ioctlGetTermios, uintptr(unsafe.Pointer(&old))); errno != 0 {
 		return nil, errno
 	}
 	raw := old
 	raw.Lflag &^= syscall.ECHO | syscall.ICANON | syscall.IEXTEN
 	raw.Iflag &^= syscall.ICRNL | syscall.IXON
 	raw.Cc[syscall.VMIN], raw.Cc[syscall.VTIME] = 1, 0
-	if _, _, errno := syscall.Syscall(syscall.SYS_IOCTL, f.Fd(), syscall.TCSETS, uintptr(unsafe.Pointer(&raw))); errno != 0 {
+	if _, _, errno := syscall.Syscall(syscall.SYS_IOCTL, f.Fd(), ioctlSetTermios, uintptr(unsafe.Pointer(&raw))); errno != 0 {
 		return nil, errno
 	}
-	return func() { syscall.Syscall(syscall.SYS_IOCTL, f.Fd(), syscall.TCSETS, uintptr(unsafe.Pointer(&old))) }, nil
+	return func() { syscall.Syscall(syscall.SYS_IOCTL, f.Fd(), ioctlSetTermios, uintptr(unsafe.Pointer(&old))) }, nil
 }
 
 // Keys the dashboard understands, decoded from terminal input.

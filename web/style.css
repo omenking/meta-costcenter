@@ -683,3 +683,11 @@ body { padding-top: var(--alert-bar, 0px); }
 .project-alert-amount strong { font-size: 22px; color: #111827; }
 .project-alert-amount span { margin-left: auto; font-weight: 600; font-variant-numeric: tabular-nums; }
 .project-alert-note { font-size: 14px; color: #5b6676; }
+/* A session's label, in the sessions table and on the session page. */
+.session-label { display: inline-block; margin-left: 8px; padding: 1px 10px; border: 0; border-radius: 10px; background: #e3ecf7; color: #1d3f6e; font-size: 14px; font-weight: 600; vertical-align: middle; }
+button.session-label { margin-left: 0; min-height: 0; cursor: pointer; }
+button.session-label:hover { background: #d0def0; }
+.session-label-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin-bottom: 16px; padding: 14px 16px; border: 1px solid #cbd2dc; border-radius: 8px; }
+.session-label-form label { display: flex; flex-direction: column; gap: 4px; flex: 1 1 220px; font-size: 16px; font-weight: 600; }
+.session-label-form input { min-height: 44px; padding: 6px 9px; border: 2px solid #7c899a; border-radius: 5px; font-size: 18px; }
+.session-label-form .field-help, .session-label-form .form-error { flex-basis: 100%; margin: 0; }

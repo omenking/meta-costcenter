@@ -56,7 +56,11 @@ CREATE INDEX IF NOT EXISTS prompts_session ON prompts(session);
 -- The reasoning effort Muse was configured with when each prompt was submitted, from the
 -- UserPromptSubmit hook. efforts is the per-model map, since the model is only known afterwards.
 CREATE TABLE IF NOT EXISTS turn_settings (
-  turn TEXT PRIMARY KEY, session TEXT, recorded_at TEXT, model TEXT, effort TEXT, efforts TEXT, source TEXT);`
+  turn TEXT PRIMARY KEY, session TEXT, recorded_at TEXT, model TEXT, effort TEXT, efforts TEXT, source TEXT);
+-- Names and labels given to top-level sessions in the dashboard, so that the cost of a piece of
+-- work can be followed across sessions. Subagents take their top-level session's label.
+CREATE TABLE IF NOT EXISTS session_labels (
+  session TEXT PRIMARY KEY, name TEXT, label TEXT, updated_at TEXT);`
 
 // Store is the usage database. Its *sql.DB is safe for concurrent use by the dashboard.
 type Store struct {

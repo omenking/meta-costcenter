@@ -78,7 +78,7 @@ The sidebar links to six pages:
 | **Overview** | Estimated cost for the selected period, the share of tokens that could be priced, the average per active day, a chart of cost (or tokens) over time, and cost by model. |
 | **Sessions** | One row per Muse session, with any subagent usage counted under the session that started it. |
 | **Projects** | Usage grouped by project. |
-| **Breakdown** | A table of usage grouped by project, model, session, or billing mode, where clicking a row opens its page or filters to it. |
+| **Breakdown** | A table of usage grouped by project, model, session, billing mode, or label, where clicking a row opens its page or filters to it. |
 | **Pricing** | Per-token rates, including any rates you have entered for models without public pricing. |
 | **Alerts** | Spending limits and their warning levels. |
 
@@ -103,14 +103,23 @@ the page once Muse's log has been deleted. Usage imported before turns were trac
 assigned to its turns the first time the new version scans, which rereads every log once
 (about 15 seconds for 3 GB of logs).
 
+A session can be given a name and a label from its page, with **Name and label**. The name
+replaces the project as the session's title in the Sessions table and on its page, and the
+label groups sessions by the work they were for: giving every session for one piece of work
+the same label, such as `invoicing`, lets the **Labels** tab on the Breakdown page and the
+**Label** filter show what that work cost across all of its sessions. Subagents count
+towards their top-level session's label, sessions without one are grouped as `unlabelled`,
+and exports include each completion's label. Names and labels are kept in the database and
+never written to the Muse logs.
+
 Clicking a project opens a page listing that project's sessions and models. The top of
 the page shows each alert that covers the project, its own alerts before those for every
 project, with the amount spent in the alert's period, a bar marking its warning levels,
 and whether it is on track, past a warning, or exceeded. Because the page updates live,
 it can be left open to watch spending approach a limit. These detail pages have their own URLs, so you can bookmark them.
 
-The **Filters** drawer narrows the data by date range, project, model, session, and
-billing mode. Active filters appear as chips beside the page title, which makes it clear
+The **Filters** drawer narrows the data by date range, project, model, session,
+billing mode, and label. Active filters appear as chips beside the page title, which makes it clear
 when a page is showing a subset of your data, and you can remove a filter by clicking
 its chip. Filters are kept when you refresh the page. The **Export** button downloads
 the usage that matches the current filters.

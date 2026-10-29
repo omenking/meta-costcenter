@@ -2,11 +2,12 @@ import { Link } from 'react-router';
 import { EmptyRow, HeadingHelp, Share } from '../components.jsx';
 import { cost, number, percent, tokens } from '../format.js';
 
-export const GROUPS = { project: 'Project', model: 'Model', session: 'Session', billing_mode: 'Billing mode' };
+export const GROUPS = { project: 'Project', model: 'Model', session: 'Session', billing_mode: 'Billing mode', label: 'Label' };
 const GROUP_HELP = {
   project: 'Usage grouped by project. Click a project to open its page.',
   model: 'Usage grouped by model. Click a model to filter all pages to it.',
   session: 'Usage grouped by individual session; subagents are listed separately. Click a session to open its page.',
+  label: 'Usage grouped by the label you gave each session in the dashboard; subagents count towards their session’s label. Click a label to filter all pages to it.',
   billing_mode: 'Usage grouped by billing mode: pay as you go, subscription, or unknown. Unknown means no billing mode has been identified. Click a mode to filter all pages to it.',
 };
 const DETAIL = { project: '/projects/', session: '/sessions/' };

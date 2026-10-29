@@ -126,7 +126,7 @@ function Dashboard({ config }) {
   const status = data?.status;
   useAlertNotifications(data?.alerts);
   const exceeded = (data?.alerts || []).filter(alert => alert.level === 'exceeded').length;
-  const pageProps = { filters, setFilters };
+  const pageProps = { filters, setFilters, options };
   return <>
     <AlertBar alerts={preview ? [preview] : data?.alerts} onEndPreview={() => setPreview(null)} />
     <aside className="sidebar"><NavLink className="brand" to="/" aria-label="Muse Cost home"><img className="brand-logo" src="/logo.png" alt="" width="512" height="512" /></NavLink>

@@ -87,6 +87,12 @@ export function Filters({ filters, setFilters, options, onClose }) {
         {filters.model && !(options.model || []).includes(filters.model) && <option value={filters.model}>{filters.model}</option>}
         {(options.model || []).map(model => <option key={model} value={model}>{model}</option>)}
       </select></label>
+      <label>Label<select name="label" value={filters.label} onChange={change}>
+        <option value="">All labels</option>
+        {filters.label && filters.label !== 'unlabelled' && !(options.label || []).includes(filters.label) && <option value={filters.label}>{filters.label}</option>}
+        {(options.label || []).map(label => <option key={label} value={label}>{label}</option>)}
+        <option value="unlabelled">No label</option>
+      </select></label>
       <label>Billing mode<select name="billing_mode" value={filters.billing_mode} onChange={change}><option value="">All billing modes</option><option value="payg">Pay as you go</option><option value="subscription">Subscription</option><option value="unknown">Unknown</option></select></label>
       <div className="filter-dates"><label>From<input name="from" type="date" value={filters.from} onChange={change} /></label><label>To<input name="to" type="date" value={filters.to} onChange={change} /></label></div>
       {textFilter('session', 'Session', 'All sessions (includes subagents)')}
@@ -95,7 +101,7 @@ export function Filters({ filters, setFilters, options, onClose }) {
   </dialog>;
 }
 
-const CHIP_LABELS = { project: 'Project', model: 'Model', session: 'Session', billing_mode: 'Billing' };
+const CHIP_LABELS = { project: 'Project', model: 'Model', session: 'Session', billing_mode: 'Billing', label: 'Label' };
 /** Always shows the date scope; other active filters are removable chips. */
 export function FilterChips({ filters, setFilters, openFilters, scoped }) {
   const active = Object.keys(CHIP_LABELS).filter(key => filters[key]);
@@ -105,9 +111,9 @@ export function FilterChips({ filters, setFilters, openFilters, scoped }) {
     <button type="button" className="chip chip-period" onClick={openFilters} title="Change period">{periodLabel(filters)}</button>
     {custom && <button type="button" className="chip" aria-label="Remove date range" onClick={() => remove(['from', 'to'])}>Custom range <span aria-hidden="true">×</span></button>}
     {!scoped && active.map(key => <button type="button" key={key} className="chip" aria-label={`Remove ${CHIP_LABELS[key].toLowerCase()} filter`} onClick={() => remove([key])}>
-      {CHIP_LABELS[key]}: {key === 'billing_mode' ? BILLING_MODES[filters[key]] : key === 'session' ? shortId(filters[key]) : filters[key]} <span aria-hidden="true">×</span></button>)}
+      {CHIP_LABELS[key]}: {key === 'billing_mode' ? BILLING_MODES[filters[key]] : key === 'session' ? shortId(filters[key]) : key === 'label' && filters[key] === 'unlabelled' ? 'none' : filters[key]} <span aria-hidden="true">×</span></button>)}
     {!scoped && active.length > 1 && <button type="button" className="chip-clear" onClick={() => remove(active)}>Clear all</button>}
-    {scoped && active.length > 0 && <span className="chip-note">Project, model, session and billing filters don’t apply to this page.</span>}
+    {scoped && active.length > 0 && <span className="chip-note">Project, model, session, billing and label filters don’t apply to this page.</span>}
   </div>;
 }
 
@@ -226,8 +232,9 @@ export function SessionsTable({ sessions, id = 'session-rows', empty = 'No sessi
   </tr></thead><tbody id={id}>
     {!rows.length && <EmptyRow columns={6}>{empty}</EmptyRow>}
     {rows.map(row => <tr key={row.id} className="clickable" onClick={event => { if (!event.target.closest('a')) navigate('/sessions/' + encodeURIComponent(row.id)); }}>
-      <td><Link className="row-link" to={'/sessions/' + encodeURIComponent(row.id)} title={row.id}>{showProject ? row.project : shortId(row.id)}</Link>
-        <span className="secondary-text">{showProject ? shortId(row.id) : row.billing_modes.map(mode => BILLING_MODES[mode] || mode).join(', ')}</span></td>
+      <td><Link className="row-link" to={'/sessions/' + encodeURIComponent(row.id)} title={row.id}>{row.name || (showProject ? row.project : shortId(row.id))}</Link>
+        {row.label && <span className="session-label">{row.label}</span>}
+        <span className="secondary-text">{[row.name && showProject && row.project, showProject ? shortId(row.id) : row.billing_modes.map(mode => BILLING_MODES[mode] || mode).join(', ')].filter(Boolean).join(' · ')}</span></td>
       <td title={`Started ${dateTime(row.started)}`}>{dateTime(row.last_activity)}<span className="secondary-text">ran {duration(row.started, row.last_activity)}</span></td>
       <td title={row.models.join(', ')}>{row.models[0]}{row.models.length > 1 && <span className="secondary-text">+{row.models.length - 1} more</span>}</td><td>{number(row.input)} / {number(row.output)}</td><td>{cost(row)}</td><td>{row.subagents || '—'}</td>
     </tr>)}

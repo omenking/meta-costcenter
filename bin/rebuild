@@ -1,0 +1,31 @@
+#!/bin/sh
+# Rebuilds meta-cost from this checkout and installs it over the release binary:
+#   bin/rebuild
+# The dashboard is rebuilt first because the Go binary embeds web/. Running dashboards keep
+# the old binary until they are restarted.
+set -eu
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+dir=${META_COST_INSTALL_DIR:-$HOME/.local/bin}
+export PATH="$HOME/.local/go/bin:$PATH"
+
+cd "$root"
+if [ ! -d frontend/node_modules ]; then
+  echo "Installing frontend dependencies"
+  npm ci --prefix frontend
+fi
+echo "Building the dashboard"
+npm run --silent build --prefix frontend
+
+version=$(git describe --tags --always --dirty 2>/dev/null || echo dev)
+echo "Building meta-cost $version"
+go build -trimpath -ldflags "-s -w -X github.com/omenking/meta-costcenter/internal/costcenter.Version=$version" -o meta-cost ./cmd/meta-cost
+
+mkdir -p "$dir"
+install -m 0755 meta-cost "$dir/meta-cost"
+echo "Installed $("$dir/meta-cost" --version) to $dir/meta-cost"
+
+running=$(pgrep -f '^meta-cost show' || true)
+if [ -n "$running" ]; then
+  echo "Restart your running dashboards to use it (stop each 'meta-cost show' and run it again): pid $(echo $running | tr '\n' ' ')"
+fi

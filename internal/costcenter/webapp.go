@@ -27,7 +27,7 @@ import (
 
 // A loopback-only dashboard, sharing the CLI's collector and accounting queries.
 
-var filterNames = []string{"period", "from", "to", "project", "model", "session", "billing_mode"}
+var filterNames = []string{"period", "from", "to", "project", "model", "session", "billing_mode", "label"}
 
 var pagePattern = regexp.MustCompile(`^(?:/|/(?:breakdown|activity|sessions|projects|pricing|alerts)|/(?:sessions|projects)/[^/]+)$`)
 var apiPattern = regexp.MustCompile(`^/api/(dashboard|export|sessions|projects|pricing|alerts|keyguard)(?:/([^/]+))?$`)
@@ -276,7 +276,7 @@ func (d *Dashboard) get(w http.ResponseWriter, r *http.Request) {
 		values["period"], echo["period"] = "today", "today"
 	}
 	filters := Filters{Period: values["period"], From: values["from"], To: values["to"], Project: values["project"],
-		Model: values["model"], Session: values["session"], BillingMode: values["billing_mode"]}
+		Model: values["model"], Session: values["session"], BillingMode: values["billing_mode"], Label: values["label"]}
 	invalidFilter := func() {
 		sendError(w, http.StatusBadRequest, "Invalid filter. Check period, date range, and billing mode.")
 	}
@@ -402,7 +402,7 @@ func (d *Dashboard) report(f Filters, echo map[string]any, rates []Rate, resolut
 		return nil, err
 	}
 	groups := map[string][]Group{}
-	for _, field := range []string{"model", "project", "session", "billing_mode"} {
+	for _, field := range []string{"model", "project", "session", "billing_mode", "label"} {
 		groups[field] = grouped(rows, field, rates)
 	}
 	days := []dashboardDay{}
@@ -445,6 +445,9 @@ func (d *Dashboard) report(f Filters, echo map[string]any, rates []Rate, resolut
 			return nil, err
 		}
 		options[field] = list
+	}
+	if options["label"], err = s.labelNames(); err != nil {
+		return nil, err
 	}
 	state := d.State()
 	warnings := append([]string{}, state.Warnings...)
@@ -599,6 +602,14 @@ func (d *Dashboard) write(w http.ResponseWriter, r *http.Request) {
 				return 0, nil, err
 			}
 			return http.StatusOK, nil, d.Store.DeleteAlert(id)
+		}
+	case r.Method == http.MethodPut && endpoint == "sessions" && hasKey:
+		handler = func() (int, any, error) {
+			b, err := body(r)
+			if err != nil {
+				return 0, nil, err
+			}
+			return http.StatusOK, nil, d.Store.SetSessionLabel(key, b)
 		}
 	case r.Method == http.MethodPut && endpoint == "pricing" && hasKey:
 		handler = func() (int, any, error) {

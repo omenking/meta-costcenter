@@ -161,6 +161,7 @@ type Row struct {
 	Sequence    string  `json:"sequence"`
 	UsageStatus string  `json:"usage_status"`
 	KeyLabel    *string `json:"key_label"`
+	Label       string  `json:"label,omitempty"`
 }
 
 // field is a row's value for a grouping or filter field.
@@ -174,6 +175,11 @@ func (r Row) field(name string) string {
 		return r.Session
 	case "billing_mode":
 		return r.BillingMode
+	case "label":
+		if r.Label == "" {
+			return unlabelled
+		}
+		return r.Label
 	}
 	return ""
 }
@@ -199,7 +205,7 @@ func estimate(row Row, rates []Rate) (value Dec, snapshot string, assumed, ok bo
 
 // Filters narrow the usage a report covers. Empty fields do not filter.
 type Filters struct {
-	Period, From, To, Project, Model, Session, BillingMode, Sort string
+	Period, From, To, Project, Model, Session, BillingMode, Label, Sort string
 }
 
 var periods = map[string]bool{"today": true, "week": true, "month": true, "all": true}
@@ -403,6 +409,11 @@ func (s *Store) Query(f Filters) ([]Row, error) {
 	if err != nil {
 		return nil, err
 	}
+	labels, err := s.sessionLabels()
+	if err != nil {
+		return nil, err
+	}
+	rootOf := roots(parents)
 	var members map[string]bool
 	if f.Session != "" {
 		members = family(parents, f.Session)
@@ -418,6 +429,7 @@ func (s *Store) Query(f Filters) ([]Row, error) {
 				row.Project = p
 			}
 		}
+		row.Label = labels[rootOf[row.Session]].Label
 		day := localDay(row.RecordedAt)
 		if (startDay != "" && day < startDay) || day > endDay {
 			continue
@@ -426,7 +438,7 @@ func (s *Store) Query(f Filters) ([]Row, error) {
 			continue
 		}
 		if (f.Project != "" && row.Project != f.Project) || (f.Model != "" && row.Model != f.Model) ||
-			(f.BillingMode != "" && row.BillingMode != f.BillingMode) {
+			(f.BillingMode != "" && row.BillingMode != f.BillingMode) || (f.Label != "" && row.field("label") != f.Label) {
 			continue
 		}
 		result = append(result, row)
@@ -645,6 +657,8 @@ func chart(rows []Row, rates []Rate, f Filters, requested string) (Chart, error)
 
 type SessionSummary struct {
 	ID           string   `json:"id"`
+	Name         string   `json:"name"`
+	Label        string   `json:"label"`
 	Project      string   `json:"project"`
 	Started      string   `json:"started"`
 	LastActivity string   `json:"last_activity"`
@@ -657,6 +671,10 @@ type SessionSummary struct {
 // Sessions is one summary per top-level session; subagent usage rolls up into its root.
 func (s *Store) Sessions(rows []Row, rates []Rate) ([]SessionSummary, error) {
 	parents, err := s.parents()
+	if err != nil {
+		return nil, err
+	}
+	labels, err := s.sessionLabels()
 	if err != nil {
 		return nil, err
 	}
@@ -682,7 +700,7 @@ func (s *Store) Sessions(rows []Row, rates []Rate) ([]SessionSummary, error) {
 			own = items
 		}
 		delete(sessions, root)
-		result = append(result, SessionSummary{ID: root, Project: ranked(own, "project")[0], Started: items[0].RecordedAt,
+		result = append(result, SessionSummary{ID: root, Name: labels[root].Name, Label: labels[root].Label, Project: ranked(own, "project")[0], Started: items[0].RecordedAt,
 			LastActivity: items[len(items)-1].RecordedAt, Models: ranked(items, "model"), BillingModes: ranked(items, "billing_mode"),
 			Subagents: len(sessions), Totals: totals(items, rates)})
 	}
@@ -775,7 +793,7 @@ func exportRows(rows []Row, rates []Rate) []ExportRow {
 }
 
 var exportFields = []string{"id", "session", "parent", "project", "recorded_at", "model", "billing_mode", "input", "output",
-	"cached", "sequence", "usage_status", "estimated_api_equivalent_usd", "pricing_snapshot", "rate_assumed", "key_label", "images"}
+	"cached", "sequence", "usage_status", "estimated_api_equivalent_usd", "pricing_snapshot", "rate_assumed", "key_label", "images", "label"}
 
 // csvRecord writes an export row as Python's csv module did: None as empty, booleans as True/False.
 func (e ExportRow) csvRecord() []string {
@@ -799,7 +817,7 @@ func (e ExportRow) csvRecord() []string {
 	}
 	return []string{e.ID, e.Session, opt(e.Parent), e.Project, e.RecordedAt, e.Model, e.BillingMode, fmt.Sprint(e.Input),
 		fmt.Sprint(e.Output), cached, e.Sequence, e.UsageStatus, opt(e.EstimatedAPIEquivalentUSD), opt(e.PricingSnapshot), assumed,
-		opt(e.KeyLabel), images}
+		opt(e.KeyLabel), images, e.Label}
 }
 
 type TreeNode struct {
@@ -810,9 +828,12 @@ type TreeNode struct {
 }
 
 type SessionDetail struct {
-	ID           string   `json:"id"`
-	Parent       *string  `json:"parent"`
-	Root         string   `json:"root"`
+	ID     string  `json:"id"`
+	Parent *string `json:"parent"`
+	Root   string  `json:"root"`
+	// Name and Label belong to the root session; a subagent shows its root's.
+	Name         string   `json:"name"`
+	Label        string   `json:"label"`
 	Project      *string  `json:"project"`
 	Started      *string  `json:"started"`
 	LastActivity *string  `json:"last_activity"`
@@ -913,7 +934,12 @@ func (s *Store) SessionDetail(session string, f Filters, rates []Rate) (*Session
 	if err != nil {
 		return nil, err
 	}
-	return &SessionDetail{ID: session, Turns: turns, Parent: optional(parents[session]), Root: roots(parents)[session], Project: projectPtr,
+	labels, err := s.sessionLabels()
+	if err != nil {
+		return nil, err
+	}
+	root := roots(parents)[session]
+	return &SessionDetail{ID: session, Turns: turns, Parent: optional(parents[session]), Root: root, Name: labels[root].Name, Label: labels[root].Label, Project: projectPtr,
 		Started: started, LastActivity: last, BillingModes: ranked(rows, "billing_mode"), BillingDetections: detections,
 		Totals: totals(rows, rates),
 		Own:    totals(bySession[session], rates), Timeline: timeline(rows, rates, unit), TimelineUnit: unit,

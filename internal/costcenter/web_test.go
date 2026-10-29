@@ -374,3 +374,53 @@ func TestInvalidFiltersAndForeignRequests(t *testing.T) {
 		}
 	}
 }
+
+func TestSessionLabels(t *testing.T) {
+	w := newWebFixture(t, nil)
+	w.write(event("child-event", "child", 50, 20, "test-model"), filepath.Join(w.logs, "parent/subagent/child/session.jsonl"))
+	w.request("POST", "/api/refresh", "", nil)
+	for i := 0; i < 100; i++ {
+		if code, _, _ := w.get("/api/sessions/child?period=all", nil); code == 200 {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	expect := func(want int, method, path, body string) {
+		t.Helper()
+		if code, data := w.send(method, path, body, nil); code != want {
+			t.Fatalf("%s %s: %d, want %d (%v)", method, path, code, want, data)
+		}
+	}
+	expect(200, "PUT", "/api/sessions/parent", `{"name":"  Fix   invoice export ","label":"invoicing"}`)
+	expect(400, "PUT", "/api/sessions/child", `{"label":"invoicing"}`)
+	expect(400, "PUT", "/api/sessions/parent", `{"label":"Unlabelled"}`)
+	expect(400, "PUT", "/api/sessions/parent", `{"label":7}`)
+	expect(404, "PUT", "/api/sessions/missing", `{"label":"invoicing"}`)
+
+	var listed []map[string]any
+	w.getJSON("/api/sessions?period=all", &listed)
+	if len(listed) != 1 || listed[0]["name"] != "Fix invoice export" || listed[0]["label"] != "invoicing" {
+		t.Fatalf("%v", listed)
+	}
+	// The subagent's usage counts towards its top-level session's label.
+	child := w.dashboardJSON("/api/sessions/child?period=all")
+	if child["label"] != "invoicing" || child["name"] != "Fix invoice export" {
+		t.Fatalf("child %v %v", child["name"], child["label"])
+	}
+	dashboard := w.dashboardJSON("/api/dashboard?period=all&label=invoicing")
+	groups := dashboard["groups"].(map[string]any)["label"].([]any)
+	if totalsOf(dashboard)["input"] != 150.0 || len(groups) != 1 || groups[0].(map[string]any)["label"] != "invoicing" {
+		t.Fatalf("%v %v", totalsOf(dashboard), groups)
+	}
+	if labels := dashboard["options"].(map[string]any)["label"].([]any); len(labels) != 1 || labels[0] != "invoicing" {
+		t.Fatalf("options %v", labels)
+	}
+	if events := totalsOf(w.dashboardJSON("/api/dashboard?period=all&label=unlabelled"))["events"]; events != 0.0 {
+		t.Fatalf("unlabelled events %v", events)
+	}
+	// Clearing both removes the label, and the usage is unlabelled again.
+	expect(200, "PUT", "/api/sessions/parent", `{"name":"","label":""}`)
+	if events := totalsOf(w.dashboardJSON("/api/dashboard?period=all&label=unlabelled"))["events"]; events != 2.0 {
+		t.Fatalf("unlabelled events %v", events)
+	}
+}

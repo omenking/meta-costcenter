@@ -1,4 +1,4 @@
-export const EMPTY = { period: 'today', from: '', to: '', project: '', model: '', session: '', billing_mode: '' };
+export const EMPTY = { period: 'today', from: '', to: '', project: '', model: '', session: '', billing_mode: '', label: '' };
 export const PERIODS = { today: 'Today', week: 'Last 7 days', month: 'This month', all: 'All time' };
 export const BILLING_MODES = { payg: 'Pay as you go', subscription: 'Subscription', unknown: 'Unknown' };
 // How the Muse hook decided a session's billing mode.

@@ -214,6 +214,26 @@ test('dashboard', async ({ page }) => {
   await page.locator('#clear').click();
   await expect(page.locator('#session-rows tr')).toHaveCount(4);
   await closeFilters();
+
+  // Naming and labelling a session; its label filters every page and groups the breakdown.
+  await page.locator('#session-rows tr', { hasText: 'Research' }).locator('td').nth(2).click();
+  await page.locator('#edit-session-label').click();
+  await page.locator('#session-label-form [name=name]').fill('Draft the pricing page');
+  await page.locator('#session-label-form [name=label]').fill('pricing-work');
+  await page.locator('#session-label-form').getByRole('button', { name: 'Save' }).click();
+  await expect(page.locator('#session-name')).toHaveText('Draft the pricing page');
+  await page.locator('#session-label').click();
+  await expect(page).toHaveURL(base + '/sessions');
+  await expect(page.locator('#session-rows tr')).toHaveCount(1);
+  await expect(page.locator('#session-rows')).toContainText('Draft the pricing page');
+  await expect(page.locator('#session-rows')).toContainText('pricing-work');
+  await page.getByRole('button', { name: 'Remove label filter' }).click();
+  await expect(page.locator('#session-rows tr')).toHaveCount(4);
+  await page.locator('.nav', { hasText: 'Breakdown' }).click();
+  await page.locator('[data-group=label]').click();
+  await expect(page.locator('#breakdown-rows tr')).toHaveCount(2);
+  await expect(page.locator('#breakdown-rows')).toContainText('unlabelled');
+  await page.locator('[data-group=session]').click();
   await page.locator('.nav', { hasText: 'Projects' }).click();
   await page.locator('#project-rows a', { hasText: 'Website' }).click();
   await expect(page).toHaveURL(base + '/projects/Website');

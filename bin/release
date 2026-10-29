@@ -1,0 +1,59 @@
+#!/bin/sh
+# Tags the next version and pushes it, which makes the release workflow build the binaries
+# and publish a GitHub release for install.sh:
+#   bin/release            # next patch version, e.g. v0.1.3 -> v0.1.4
+#   bin/release minor      # v0.1.3 -> v0.2.0
+#   bin/release major      # v0.1.3 -> v1.0.0
+#   bin/release v0.2.0     # an exact version
+set -eu
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+export PATH="$HOME/.local/go/bin:$PATH"
+cd "$root"
+
+fail() { echo "$*" >&2; exit 1; }
+
+branch=$(git rev-parse --abbrev-ref HEAD)
+[ "$branch" = main ] || fail "Releases are tagged from main; this is $branch."
+[ -z "$(git status --porcelain)" ] || fail "Commit or stash your changes first:
+$(git status --short)"
+
+git fetch --quiet --tags origin
+[ -z "$(git rev-list HEAD..origin/main)" ] || fail "origin/main has commits you don't have; pull first."
+
+latest=$(git tag --list 'v*' --sort=-v:refname | head -n 1)
+latest=${latest:-v0.0.0}
+IFS=. read -r major minor patch <<EOF
+${latest#v}
+EOF
+case "${1:-patch}" in
+  patch) next=v$major.$minor.$((patch + 1)) ;;
+  minor) next=v$major.$((minor + 1)).0 ;;
+  major) next=v$((major + 1)).0.0 ;;
+  v[0-9]*.[0-9]*.[0-9]*) next=$1 ;;
+  *) fail "Usage: bin/release [patch|minor|major|vX.Y.Z]" ;;
+esac
+git rev-parse -q --verify "refs/tags/$next" >/dev/null && fail "$next already exists."
+
+# The binary embeds web/, so the committed dashboard must match the frontend source.
+echo "Checking the built dashboard is up to date"
+[ -d frontend/node_modules ] || npm ci --prefix frontend
+npm run --silent build --prefix frontend
+[ -z "$(git status --porcelain web)" ] || fail "The built dashboard in web/ was out of date; commit the rebuilt files and run this again."
+
+echo "Running tests"
+go test ./...
+
+echo
+echo "Latest release: $latest"
+echo "New release:    $next"
+git log --oneline "$latest..HEAD" 2>/dev/null || git log --oneline -10
+echo
+printf "Push main and tag %s to publish it? [y/N] " "$next"
+read -r answer
+[ "$answer" = y ] || [ "$answer" = Y ] || fail "Nothing was tagged."
+
+git tag -a "$next" -m "$next"
+git push origin main
+git push origin "$next"
+echo "Pushed $next. The release workflow is publishing it: https://github.com/omenking/meta-costcenter/actions"

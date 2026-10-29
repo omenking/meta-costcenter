@@ -26,6 +26,25 @@ export const alertText = alert => `${alert.label}: ${usd(alert.spent_usd)} of ${
   + (alert.level === 'warning' && alert.warning_at ? ` · passed your ${alert.warning_at}% warning` : '')
   + (alert.level === 'exceeded' ? keyguardText(alert.keyguard) : '');
 
+/** Colour step 0–3 for a warning level among an alert's levels, so later warnings run from amber towards red. */
+function warnStep(levels, value) {
+  const sorted = [...levels].sort((a, b) => a - b);
+  return sorted.length < 2 ? 1 : Math.round(sorted.indexOf(value) * 3 / (sorted.length - 1));
+}
+
+/** The class for an alert card: its level and, while warning, the step of the warning it passed. */
+export const alertClass = alert => 'level-' + alert.level + (alert.level === 'warning' && alert.warning_at ? ' warn-step-' + warnStep(alert.warn_levels || [], alert.warning_at) : '');
+
+/** Spend against the limit, with a tick at each warning level in that level's colour. */
+export function AlertMeter({ alert, label }) {
+  const levels = alert.warn_levels || [];
+  return <div className="alert-meter" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(alert.percent, 100)} aria-label={label}>
+    <span style={{ width: Math.min(alert.percent, 100) + '%' }} />{levels.map(value => <i key={value} className={'warn-step-' + warnStep(levels, value)} style={{ left: value + '%' }} title={`Warns at ${value}%`} />)}</div>;
+}
+
+/** "20%, 40%, …" with a dot in each level's colour, as a legend for the meter's ticks. */
+export const WarnLevels = ({ levels }) => levels.map((value, i) => <span key={value}>{i ? ', ' : ''}<span className={'warn-level warn-step-' + warnStep(levels, value)}>{value}%</span></span>);
+
 const time = stamp => new Date(stamp).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 const minutes = ms => { const m = Math.max(0, Math.round(ms / 60000)); return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`; };
 const keyList = keys => keys.length > 3 ? `${keys.slice(0, 3).join(', ')} and ${keys.length - 3} more` : keys.join(', ');
@@ -189,12 +208,11 @@ export default function Alerts({ options, onPreview }) {
     <section className="panel" id="alerts"><div className="panel-heading"><div><h2>Your alerts</h2><p>Get warned when estimated cost passes a limit for a day, a week, or a month, for all projects or one. Unpriced usage is not counted. Alerts never stop usage themselves, but an alert can ask Meta Keyguard to revoke API keys.</p></div>
       <button type="button" id="add-alert" className="primary" onClick={() => setDialog({})}>Add alert</button></div>
       {!data ? <p className="panel-empty">Loading alerts…</p> : !data.length ? <p className="panel-empty">No alerts yet. Add a daily limit to start.</p> :
-        <ul className="alert-list" id="alert-rows">{data.map(alert => <li key={alert.id} className={'alert-item level-' + alert.level}>
+        <ul className="alert-list" id="alert-rows">{data.map(alert => <li key={alert.id} className={'alert-item ' + alertClass(alert)}>
           <div className="alert-summary"><strong>{alert.label}</strong>
             <span className="alert-status">{alert.level === 'paused' ? 'Paused' : `${usd(alert.spent_usd)} of ${usd(alert.limit_usd)} ${windowText(alert)}`}</span></div>
-          <div className="alert-meter" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(alert.percent, 100)} aria-label={`${alert.percent}% of limit`}>
-            <span style={{ width: Math.min(alert.percent, 100) + '%' }} />{alert.warn_levels.map(value => <i key={value} style={{ left: value + '%' }} title={`Warns at ${value}%`} />)}</div>
-          <div className="alert-details"><span>{alert.percent}% used · warns at {alert.warn_levels.map(value => value + '%').join(', ')}{alert.revoke_keys ? ` · revokes keys matching ${alert.key_match}` : ''}{alert.unpriced_events ? ` · ${number(alert.unpriced_events)} unpriced completions not counted` : ''}{alert.unknown_billing_events ? ` · ${number(alert.unknown_billing_events)} completions with unknown billing mode not counted` : ''}</span>
+          <AlertMeter alert={alert} label={`${alert.percent}% of limit`} />
+          <div className="alert-details"><span>{alert.percent}% used · warns at <WarnLevels levels={alert.warn_levels} />{alert.revoke_keys ? ` · revokes keys matching ${alert.key_match}` : ''}{alert.unpriced_events ? ` · ${number(alert.unpriced_events)} unpriced completions not counted` : ''}{alert.unknown_billing_events ? ` · ${number(alert.unknown_billing_events)} completions with unknown billing mode not counted` : ''}</span>
             <span className="row-actions"><button type="button" className="small-button" onClick={() => setDialog({ id: alert.id, period: alert.period, project: alert.project || '', billing_mode: alert.billing_mode || '', limit_usd: alert.limit_usd, warn_levels: alert.warn_levels, enabled: alert.enabled, revoke_keys: alert.revoke_keys, key_match: alert.key_match || '*' })}>Edit</button>
               <button type="button" className="small-button" onClick={() => toggle(alert)}>{alert.enabled ? 'Pause' : 'Resume'}</button>
               <button type="button" className="small-button" onClick={() => remove(alert)}>Delete</button></span></div>

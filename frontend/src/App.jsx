@@ -29,9 +29,12 @@ function pageFor(pathname, filters) {
 
 
 const SEVERITY = { exceeded: 2, warning: 1 };
+// Rows shown in the alert bar before the rest are summarised as "and N more".
+const MAX_BAR_ROWS = 3;
 /**
- * A full-width bar fixed to the top of the window while any alert is at its warning level or
- * over its limit. It publishes its height as --alert-bar so the sidebar and sticky header sit below it.
+ * A full-width bar fixed to the top of the window with one row for each alert at its warning
+ * level or over its limit, most severe first. It publishes its height as --alert-bar so the
+ * sidebar and sticky header sit below it.
  */
 function AlertBar({ alerts, onEndPreview }) {
   const bar = useRef(null);
@@ -45,12 +48,17 @@ function AlertBar({ alerts, onEndPreview }) {
     return () => { observer.disconnect(); root.style.setProperty('--alert-bar', '0px'); };
   }, [active.length > 0]);
   if (!active.length) return null;
-  const [top] = active, exceeded = top.level === 'exceeded';
-  return <div id="alert-banner" ref={bar} className={'alert-bar ' + top.level} role="region" aria-label="Cost alerts">
-    <span className="alert-bar-icon" aria-hidden="true">{exceeded ? '!' : '▲'}</span>
-    <strong>{top.preview && <span className="alert-bar-tag">Preview</span>}{exceeded ? 'Cost limit exceeded' : 'Approaching a cost limit'}</strong>
-    <span className="alert-bar-text">{alertText(top)}{active.length > 1 && <span className="alert-bar-more"> · and {active.length - 1} more</span>}</span>
-    {top.preview ? <button type="button" className="alert-bar-button" onClick={onEndPreview}>End preview</button> : <Link to="/alerts">Manage alerts</Link>}
+  const shown = active.slice(0, MAX_BAR_ROWS), hidden = active.length - shown.length;
+  return <div id="alert-banner" ref={bar} className="alert-bars" role="region" aria-label="Cost alerts">
+    {shown.map((alert, i) => {
+      const exceeded = alert.level === 'exceeded', last = i === shown.length - 1;
+      return <div key={alert.id} className={'alert-bar ' + alert.level}>
+        <span className="alert-bar-icon" aria-hidden="true">{exceeded ? '!' : '▲'}</span>
+        <strong>{alert.preview && <span className="alert-bar-tag">Preview</span>}{exceeded ? 'Cost limit exceeded' : 'Approaching a cost limit'}</strong>
+        <span className="alert-bar-text">{alertText(alert)}{last && hidden > 0 && <span className="alert-bar-more"> · and {hidden} more</span>}</span>
+        {alert.preview ? <button type="button" className="alert-bar-button" onClick={onEndPreview}>End preview</button> : i === 0 && <Link to="/alerts">Manage alerts</Link>}
+      </div>;
+    })}
   </div>;
 }
 

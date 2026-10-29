@@ -2,7 +2,7 @@ import { Link, useParams } from 'react-router';
 import { useResource } from '../api.js';
 import { ChartPanel, Metric, ModelsTable, NotFound, SessionsTable, TotalsMetrics } from '../components.jsx';
 import { filterQuery, number, periodOnly, tokens, usd } from '../format.js';
-import { windowText } from './Alerts.jsx';
+import { AlertMeter, WarnLevels, alertClass, windowText } from './Alerts.jsx';
 import { NoUsageInPeriod } from './SessionDetail.jsx';
 
 const STATUS = { ok: 'On track', warning: 'Warning', exceeded: 'Limit exceeded', paused: 'Paused' };
@@ -15,14 +15,13 @@ function ProjectAlerts({ project, alerts }) {
   return <section className="panel" id="project-alerts"><div className="panel-heading"><div><h2>Alerts</h2><p>Spending against the limits that cover this project</p></div>
     <Link className="panel-link" to="/alerts" state={{ project }}>Add alert for this project →</Link></div>
     {!covering.length ? <p className="panel-empty">No alerts cover this project yet.</p>
-      : <ul className="project-alert-list">{covering.map(alert => <li key={alert.id} className={'level-' + alert.level}>
+      : <ul className="project-alert-list">{covering.map(alert => <li key={alert.id} className={alertClass(alert)}>
         <div className="project-alert-head"><Link to="/alerts" className="project-alert-name">{alert.label}</Link>
           <span className="alert-status">{STATUS[alert.level] || alert.level}</span></div>
         <div className="project-alert-amount"><strong>{usd(alert.spent_usd)}</strong> of {usd(alert.limit_usd)} {windowText(alert)}<span>{alert.percent}%</span></div>
-        <div className="alert-meter" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(alert.percent, 100)} aria-label={`${alert.label}: ${alert.percent}% of limit`}>
-          <span style={{ width: Math.min(alert.percent, 100) + '%' }} />{(alert.warn_levels || []).map(value => <i key={value} style={{ left: value + '%' }} title={`Warns at ${value}%`} />)}</div>
+        <AlertMeter alert={alert} label={`${alert.label}: ${alert.percent}% of limit`} />
         <div className="project-alert-note">{alert.project ? 'This project' : 'All projects'}{alert.billing_mode ? ` · ${alert.billing_mode === 'payg' ? 'pay as you go' : alert.billing_mode} only` : ''}
-          {alert.warn_levels?.length ? ` · warns at ${alert.warn_levels.map(value => value + '%').join(', ')}` : ''}{alert.revoke_keys ? ` · revokes keys matching ${alert.key_match}` : ''}</div>
+          {alert.warn_levels?.length ? <> · warns at <WarnLevels levels={alert.warn_levels} /></> : ''}{alert.revoke_keys ? ` · revokes keys matching ${alert.key_match}` : ''}</div>
       </li>)}</ul>}
   </section>;
 }

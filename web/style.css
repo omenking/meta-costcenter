@@ -575,14 +575,23 @@ tr.needs-rate td:first-child { color: #8a2014; }
 .alert-details > span:first-child { font-size: 16px; color: #293548; }
 .alert-meter { position: relative; height: 12px; border-radius: 6px; background: #dce3eb; overflow: hidden; }
 .alert-meter > span { display: block; height: 100%; background: #005c45; border-radius: 6px; }
-.alert-meter > i { position: absolute; top: 0; bottom: 0; width: 2px; background: #293548; opacity: .5; }
-.level-warning .alert-meter > span { background: #bb6c00; }
+/* Warning colours step from amber towards the exceeded red as an alert passes each of its levels. */
+.warn-step-0 { --warn-fill: #b58500; --warn-text: #6e5200; }
+.warn-step-1, .level-warning { --warn-fill: #bb6c00; --warn-text: #8a4b00; }
+.warn-step-2 { --warn-fill: #c94f0a; --warn-text: #93380a; }
+.warn-step-3 { --warn-fill: #c2381a; --warn-text: #962a14; }
+.alert-meter > i { position: absolute; top: 0; bottom: 0; width: 3px; margin-left: -1px; background: var(--warn-fill); box-shadow: 0 0 0 1px white; }
+.level-warning .alert-meter > span { background: var(--warn-fill); }
 .level-exceeded .alert-meter > span { background: #b42318; }
 .level-paused { opacity: .7; }
 .level-exceeded .alert-status { color: #b42318; }
-.level-warning .alert-status { color: #8a4b00; }
+.level-warning .alert-status, .level-warning .project-alert-head .alert-status { color: var(--warn-text); }
+.warn-level { white-space: nowrap; }
+.warn-level::before { content: ''; display: inline-block; width: 9px; height: 9px; margin-right: 4px; border-radius: 50%; background: var(--warn-fill); vertical-align: 1px; }
 .rank-list li.level-exceeded strong { color: #b42318; }
-.alert-bar { position: fixed; inset: 0 0 auto 0; z-index: 50; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 10px 24px; font-size: 18px; color: white; box-shadow: 0 2px 8px #11182740; }
+.alert-bars { position: fixed; inset: 0 0 auto 0; z-index: 50; box-shadow: 0 2px 8px #11182740; }
+.alert-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 10px 24px; font-size: 18px; color: white; }
+.alert-bar + .alert-bar { border-top: 1px solid #ffffff40; }
 .alert-bar.exceeded { background: #b42318; }
 .alert-bar.warning { background: #8a4b00; }
 .alert-bar-icon { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #ffffff33; font-weight: 700; font-size: 16px; }

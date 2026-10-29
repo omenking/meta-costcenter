@@ -10,3 +10,6 @@ frontend/playwright-report/
 muse-usage.json
 muse-usage.csv
 *.jsonl
+
+# Local scratch work
+/tmp/

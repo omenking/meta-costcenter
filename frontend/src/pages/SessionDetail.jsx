@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
-import { send, useResource } from '../api.js';
-import { ChartPanel, EmptyRow, Metric, ModelsTable, NotFound, Share, TotalsMetrics } from '../components.jsx';
+import { Link, useParams } from 'react-router';
+import { useResource } from '../api.js';
+import { ChartPanel, EmptyRow, LabelButton, Metric, ModelsTable, NotFound, SessionLabelDialog, Share, TotalsMetrics } from '../components.jsx';
 import { BILLING_MODES, BILLING_SOURCES, compact, cost, dateTime, duration, filterQuery, number, percent, periodLabel, periodOnly, shortId, tokens } from '../format.js';
 
 const sessionLink = id => '/sessions/' + encodeURIComponent(id);
@@ -74,27 +74,6 @@ function TreeNode({ node, total, current }) {
   </li>;
 }
 
-/** Name and label a top-level session so its cost can be followed by the work it was for. */
-function LabelForm({ data, labels, onSaved, onCancel }) {
-  const [values, setValues] = useState({ name: data.name, label: data.label });
-  const [error, setError] = useState('');
-  const [saving, setSaving] = useState(false);
-  const change = event => setValues(previous => ({ ...previous, [event.target.name]: event.target.value }));
-  async function save(event) {
-    event.preventDefault();
-    setSaving(true); setError('');
-    try { await send('PUT', '/api/sessions/' + encodeURIComponent(data.id), values); onSaved(); } catch (failure) { setError(failure.message); setSaving(false); }
-  }
-  return <form className="session-label-form" id="session-label-form" onSubmit={save}>
-    <label>Name<input name="name" value={values.name} onChange={change} maxLength={120} placeholder="What this session was for" autoFocus /></label>
-    <label>Label<input name="label" value={values.label} onChange={change} maxLength={60} list="session-label-options" placeholder="e.g. invoicing" autoComplete="off" />
-      <datalist id="session-label-options">{labels.map(label => <option key={label} value={label} />)}</datalist></label>
-    <div className="form-actions"><button type="button" onClick={onCancel}>Cancel</button><button type="submit" className="primary" disabled={saving}>Save</button></div>
-    <p className="field-help">Use the same label on every session for a piece of work, then group or filter by it to see what that work cost. Leave both empty to clear them.</p>
-    {error && <p className="form-error" role="alert">{error}</p>}
-  </form>;
-}
-
 export function NoUsageInPeriod({ filters, setFilters, subject }) {
   return <div className="notice" role="status">No usage for this {subject} in {periodLabel(filters).toLowerCase()}.
     {filters.period !== 'all' && <> <button type="button" className="inline-button" onClick={() => setFilters(previous => ({ ...previous, period: 'all', from: '', to: '' }))}>Show all time</button></>}</div>;
@@ -102,8 +81,7 @@ export function NoUsageInPeriod({ filters, setFilters, subject }) {
 
 export default function SessionDetail({ filters, setFilters, options }) {
   const { id } = useParams();
-  const [editing, setEditing] = useState(false);
-  const navigate = useNavigate();
+  const [labelling, setLabelling] = useState(false);
   const { data, error, status, reload } = useResource(`/api/sessions/${encodeURIComponent(id)}?` + filterQuery(periodOnly(filters)));
   const [copied, setCopied] = useState(false);
   if (status === 404) return <NotFound kind="Session" message={`No usage has been recorded for session ${id}.`} />;
@@ -116,10 +94,10 @@ export default function SessionDetail({ filters, setFilters, options }) {
       <span aria-hidden="true">›</span><span aria-current="page">{shortId(data.id)}</span></nav>
     <section className="panel detail-header" id="session-header">
       <div className="detail-title"><h2>{data.name ? <span id="session-name">{data.name}</span> : data.project ? <Link to={'/projects/' + encodeURIComponent(data.project)}>{data.project}</Link> : 'Session'}</h2>
-        {data.label && <button type="button" className="session-label" id="session-label" title={`Show every session labelled ${data.label}`} onClick={() => { setFilters(previous => ({ ...previous, label: data.label })); navigate('/sessions'); }}>{data.label}</button>}
         <code title="Session ID">{data.id}</code><button type="button" className="small-button" onClick={copy}>{copied ? 'Copied' : 'Copy ID'}</button>
-        {data.root === data.id && !editing && <button type="button" className="small-button" id="edit-session-label" onClick={() => setEditing(true)}>{data.name || data.label ? 'Edit name and label' : 'Name and label'}</button>}</div>
-      {editing && <LabelForm data={data} labels={options?.label || []} onCancel={() => setEditing(false)} onSaved={() => { setEditing(false); reload(); }} />}
+        {data.root === data.id ? <LabelButton session={data} onClick={() => setLabelling(true)} />
+          : data.label && <span className="session-label" title="Subagents take the label of their top-level session">{data.label}</span>}</div>
+      {labelling && <SessionLabelDialog session={data} labels={options?.label} onClose={() => setLabelling(false)} onSaved={() => { setLabelling(false); reload(); }} />}
       <dl className="facts">
         {data.name && data.project && <div><dt>Project</dt><dd><Link className="row-link" to={'/projects/' + encodeURIComponent(data.project)}>{data.project}</Link></dd></div>}
         {data.parent && <div><dt>Subagent of</dt><dd><Link className="row-link" id="parent-link" to={sessionLink(data.parent)} title={data.parent}>{shortId(data.parent)}</Link></dd></div>}

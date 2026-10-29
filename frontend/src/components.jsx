@@ -1,6 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router';
+import { send } from './api.js';
 import { BILLING_MODES, EMPTY, compact, cost, coverage, dateTime, duration, equivalent, number, percent, periodLabel, shortId, tokens } from './format.js';
 
 export function HeadingHelp({ children, text, id, icon = false, label, onClick, disabled, buttonId }) {
@@ -222,8 +223,45 @@ export function useSort(initial) {
 }
 
 const SESSION_SORT = { last_activity: s => s.last_activity, tokens, cost: equivalent, subagents: s => s.subagents };
-export function SessionsTable({ sessions, id = 'session-rows', empty = 'No sessions match the current filters. Try a longer period or clear filters.', showProject = true, limit }) {
+const TagIcon = () => <svg className="tag-icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M1.5 2.5v4.6l7.4 7.4 5.6-5.6-7.4-7.4H2.5a1 1 0 0 0-1 1z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /><circle cx="5" cy="5" r="1.2" fill="currentColor" /></svg>;
+
+/** A session's label as a button that opens the name and label dialog; "+ Label" when it has none. */
+export function LabelButton({ session, onClick }) {
+  return <button type="button" className={'label-button' + (session.label ? '' : ' empty')} onClick={onClick}
+    aria-label={session.label ? `Label ${session.label}; rename the session or change its label` : 'Name or label this session'}
+    title={session.label ? 'Rename the session or change its label' : 'Name or label this session'}>
+    <TagIcon />{session.label || '+ Label'}</button>;
+}
+
+/** Name and label a top-level session in a modal, so its cost can be followed by the work it was for. */
+export function SessionLabelDialog({ session, labels = [], onSaved, onClose }) {
+  const modal = useModalDialog(onClose);
+  const [values, setValues] = useState({ name: session.name || '', label: session.label || '' });
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const change = event => setValues(previous => ({ ...previous, [event.target.name]: event.target.value }));
+  async function save(event) {
+    event.preventDefault();
+    setSaving(true); setError('');
+    try { await send('PUT', '/api/sessions/' + encodeURIComponent(session.id), values); onSaved(); } catch (failure) { setError(failure.message); setSaving(false); }
+  }
+  return <dialog {...modal} id="session-label-dialog" className="modal" aria-labelledby="session-label-title">
+    <div className="modal-heading"><h2 id="session-label-title">Name and label</h2><button type="button" aria-label="Close" onClick={onClose}>×</button></div>
+    <form className="alert-form" id="session-label-form" onSubmit={save}>
+      <p className="modal-intro">Session <code>{shortId(session.id)}</code>. Use the same label on every session for a piece of work, then group or filter by it to see what that work cost. Leave both empty to clear them.</p>
+      <label>Name<input name="name" value={values.name} onChange={change} maxLength={120} placeholder="What this session was for" autoFocus /></label>
+      <label>Label<input name="label" value={values.label} onChange={change} maxLength={60} list="session-label-options" placeholder="e.g. invoicing" autoComplete="off" />
+        <datalist id="session-label-options">{labels.map(label => <option key={label} value={label} />)}</datalist></label>
+      {error && <p className="form-error" role="alert">{error}</p>}
+      <div className="modal-actions"><button type="button" onClick={onClose}>Cancel</button><button type="submit" className="primary" disabled={saving}>Save</button></div>
+    </form>
+  </dialog>;
+}
+
+/** onLabelled, when given, adds a label button to each row and is called after a session is renamed or relabelled. */
+export function SessionsTable({ sessions, id = 'session-rows', empty = 'No sessions match the current filters. Try a longer period or clear filters.', showProject = true, limit, labels, onLabelled }) {
   const navigate = useNavigate();
+  const [labelling, setLabelling] = useState(null);
   const { header, apply } = useSort({ key: 'last_activity', desc: true });
   const rows = apply(sessions, (row, key) => SESSION_SORT[key](row)).slice(0, limit);
   return <div className="table-wrap"><table className="sessions-table"><thead><tr>
@@ -231,14 +269,15 @@ export function SessionsTable({ sessions, id = 'session-rows', empty = 'No sessi
     {header('tokens', 'Input / output')}{header('cost', 'Est. cost', 'API-equivalent estimate in USD; not a billed charge. ≈ assumed rate, + partly unpriced')}{header('subagents', 'Subagents')}
   </tr></thead><tbody id={id}>
     {!rows.length && <EmptyRow columns={6}>{empty}</EmptyRow>}
-    {rows.map(row => <tr key={row.id} className="clickable" onClick={event => { if (!event.target.closest('a')) navigate('/sessions/' + encodeURIComponent(row.id)); }}>
+    {rows.map(row => <tr key={row.id} className="clickable" onClick={event => { if (!event.target.closest('a, button')) navigate('/sessions/' + encodeURIComponent(row.id)); }}>
       <td><Link className="row-link" to={'/sessions/' + encodeURIComponent(row.id)} title={row.id}>{row.name || (showProject ? row.project : shortId(row.id))}</Link>
-        {row.label && <span className="session-label">{row.label}</span>}
+        {onLabelled ? <LabelButton session={row} onClick={() => setLabelling(row)} /> : row.label && <span className="session-label">{row.label}</span>}
         <span className="secondary-text">{[row.name && showProject && row.project, showProject ? shortId(row.id) : row.billing_modes.map(mode => BILLING_MODES[mode] || mode).join(', ')].filter(Boolean).join(' · ')}</span></td>
       <td title={`Started ${dateTime(row.started)}`}>{dateTime(row.last_activity)}<span className="secondary-text">ran {duration(row.started, row.last_activity)}</span></td>
       <td title={row.models.join(', ')}>{row.models[0]}{row.models.length > 1 && <span className="secondary-text">+{row.models.length - 1} more</span>}</td><td>{number(row.input)} / {number(row.output)}</td><td>{cost(row)}</td><td>{row.subagents || '—'}</td>
     </tr>)}
-  </tbody></table></div>;
+  </tbody></table>
+  {labelling && <SessionLabelDialog session={labelling} labels={labels} onClose={() => setLabelling(null)} onSaved={() => { setLabelling(null); onLabelled(); }} />}</div>;
 }
 
 export function ModelsTable({ models, total }) {

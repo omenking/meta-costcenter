@@ -26,9 +26,9 @@ function ProjectAlerts({ project, alerts }) {
   </section>;
 }
 
-export default function ProjectDetail({ filters, setFilters, alerts = [], resolution, setResolution }) {
+export default function ProjectDetail({ filters, setFilters, options, alerts = [], resolution, setResolution }) {
   const { name } = useParams();
-  const { data, error, status } = useResource(`/api/projects/${encodeURIComponent(name)}?` + filterQuery({ ...periodOnly(filters), resolution }));
+  const { data, error, status, reload } = useResource(`/api/projects/${encodeURIComponent(name)}?` + filterQuery({ ...periodOnly(filters), resolution }));
   if (status === 404) return <NotFound kind="Project" message={`No usage has been recorded for project ${name}.`} />;
   if (!data) return error ? <div className="notice danger" role="alert">{error}</div> : <div className="loading-state" role="status">Loading project…</div>;
   const t = data.totals;
@@ -39,7 +39,7 @@ export default function ProjectDetail({ filters, setFilters, alerts = [], resolu
     <TotalsMetrics totals={t} extra={<Metric label="Sessions" icon="◷" id="session-count" accent value={number(data.sessions.length)} description="Subagents included in their parent" />} />
     <ChartPanel chart={data.chart} setResolution={setResolution} />
     <section className="panel" id="project-sessions"><div className="panel-heading"><div><h2>Sessions</h2><p>Select a session to see what it did</p></div></div>
-      <SessionsTable sessions={data.sessions} showProject={false} empty="No sessions in this period." /></section>
+      <SessionsTable sessions={data.sessions} showProject={false} empty="No sessions in this period." labels={options?.label} onLabelled={reload} /></section>
     <section className="panel"><div className="panel-heading"><h2>Models</h2></div><ModelsTable models={data.models} total={tokens(t)} /></section>
   </>;
 }

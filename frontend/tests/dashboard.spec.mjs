@@ -215,20 +215,34 @@ test('dashboard', async ({ page }) => {
   await expect(page.locator('#session-rows tr')).toHaveCount(4);
   await closeFilters();
 
-  // Naming and labelling a session; its label filters every page and groups the breakdown.
-  await page.locator('#session-rows tr', { hasText: 'Research' }).locator('td').nth(2).click();
-  await page.locator('#edit-session-label').click();
-  await page.locator('#session-label-form [name=name]').fill('Draft the pricing page');
-  await page.locator('#session-label-form [name=label]').fill('pricing-work');
-  await page.locator('#session-label-form').getByRole('button', { name: 'Save' }).click();
-  await expect(page.locator('#session-name')).toHaveText('Draft the pricing page');
-  await page.locator('#session-label').click();
+  // Naming and labelling a session from the Sessions list, in a dialog; its label filters every page.
+  const researchRow = page.locator('#session-rows tr', { hasText: 'Research' });
+  await researchRow.getByRole('button', { name: 'Name or label this session' }).click();
   await expect(page).toHaveURL(base + '/sessions');
-  await expect(page.locator('#session-rows tr')).toHaveCount(1);
+  const labelDialog = page.getByRole('dialog', { name: 'Name and label' });
+  await labelDialog.getByLabel('Name').fill('Draft the pricing page');
+  await labelDialog.getByLabel('Label').fill('pricing-work');
+  await labelDialog.getByRole('button', { name: 'Save' }).click();
+  await expect(labelDialog).toHaveCount(0);
   await expect(page.locator('#session-rows')).toContainText('Draft the pricing page');
-  await expect(page.locator('#session-rows')).toContainText('pricing-work');
+  await openFilters();
+  await page.locator('[name=label]').selectOption('pricing-work');
+  await closeFilters();
+  await expect(page.locator('#session-rows tr')).toHaveCount(1);
   await page.getByRole('button', { name: 'Remove label filter' }).click();
   await expect(page.locator('#session-rows tr')).toHaveCount(4);
+  // Renaming from the project page; the session page shows the new name and opens the same dialog.
+  await page.locator('.nav', { hasText: 'Projects' }).click();
+  await page.locator('#project-rows a', { hasText: 'Research' }).click();
+  await page.locator('#project-sessions').getByRole('button', { name: /^Label pricing-work/ }).click();
+  await labelDialog.getByLabel('Name').fill('Price the plans');
+  await labelDialog.getByRole('button', { name: 'Save' }).click();
+  await page.locator('#project-sessions a', { hasText: 'Price the plans' }).click();
+  await expect(page).toHaveURL(base + '/sessions/session-2');
+  await expect(page.locator('#session-name')).toHaveText('Price the plans');
+  await page.locator('#session-header').getByRole('button', { name: /^Label pricing-work/ }).click();
+  await expect(labelDialog.getByLabel('Label')).toHaveValue('pricing-work');
+  await labelDialog.getByRole('button', { name: 'Cancel' }).click();
   await page.locator('.nav', { hasText: 'Breakdown' }).click();
   await page.locator('[data-group=label]').click();
   await expect(page.locator('#breakdown-rows tr')).toHaveCount(2);

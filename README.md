@@ -103,7 +103,8 @@ the page once Muse's log has been deleted. Usage imported before turns were trac
 assigned to its turns the first time the new version scans, which rereads every log once
 (about 15 seconds for 3 GB of logs).
 
-A session can be given a name and a label from its page, with **Name and label**. The name
+A session can be given a name and a label with the **+ Label** button beside it in the
+Sessions table, in a project's sessions, or on the session's own page. The name
 replaces the project as the session's title in the Sessions table and on its page, and the
 label groups sessions by the work they were for: giving every session for one piece of work
 the same label, such as `invoicing`, lets the **Labels** tab on the Breakdown page and the
